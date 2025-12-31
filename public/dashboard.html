@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orion Command Center</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;900&family=Space+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+
+    <style>
+        :root {
+            --primary-neon: #00f2ff;
+            /* Default for Admin/Login */
+            --secondary-neon: #ff00ff;
+            /* For Student/Signup */
+            --tertiary-neon: #ffeb00;
+            /* For Teacher */
+            --red-neon: #ff3366;
+            --green-neon: #00ff99;
+        }
+
+        body {
+            margin: 0;
+            background: #000;
+            overflow: hidden;
+            font-family: 'Outfit', sans-serif;
+            color: white;
+        }
+
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        /* Base Glassmorphism Style */
+        .glass-element {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+        }
+
+        /* Login Page Specific */
+        .login-panel {
+            border-radius: 50px;
+        }
+
+        /* More rounded than dashboard */
+        .cyber-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            color: white;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .cyber-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary-neon);
+            /* Dynamically set by JS */
+            transform: scale(1.02);
+            outline: none;
+        }
+
+        .btn-action {
+            background: var(--primary-neon);
+            /* Dynamically set by JS */
+            color: #000;
+            font-weight: 900;
+            transition: all 0.4s;
+            border-radius: 30px;
+        }
+
+        .btn-action:hover {
+            letter-spacing: 2px;
+            box-shadow: 0 0 20px var(--primary-neon);
+        }
+
+        /* Sidebar & Layout */
+        .sidebar-container {
+            width: 260px;
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 40;
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sidebar-container.open {
+            transform: translateX(0);
+        }
+
+        .main-content {
+            margin-left: 0;
+            transition: margin-left 0.3s;
+            width: 100%;
+        }
+
+        .sidebar-open .main-content {
+            margin-left: 260px;
+            width: calc(100% - 260px);
+        }
+
+        .nav-item {
+            padding: 1rem 1.5rem;
+            color: rgba(255, 255, 255, 0.6);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Space Mono', monospace;
+            border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            color: white;
+            background: rgba(255, 255, 255, 0.05);
+            border-left-color: var(--primary-neon);
+        }
+
+        /* Dashboard Specific */
+        .navbar {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(25px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .bento-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .student-card {
+            background: linear-gradient(145deg, rgba(0, 242, 255, 0.05), rgba(255, 0, 255, 0.05));
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .student-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.3);
+        }
+
+        .status-dot {
+            animation: pulse-green 2s infinite;
+        }
+
+        @keyframes pulse-green {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 var(--green-neon);
+            }
+
+            70% {
+                box-shadow: 0 0 0 6px rgba(0, 255, 153, 0);
+            }
+        }
+
+        .action-btn-base {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 700;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+            font-family: 'Space Mono', monospace;
+        }
+
+        .admin-edit-btn {
+            background-color: var(--green-neon);
+            color: black;
+        }
+
+        .admin-edit-btn:hover {
+            box-shadow: 0 0 15px var(--green-neon);
+        }
+
+        .admin-delete-btn {
+            background-color: var(--red-neon);
+            color: white;
+        }
+
+        .admin-delete-btn:hover {
+            box-shadow: 0 0 15px var(--red-neon);
+        }
+
+        .teacher-edit-btn {
+            background-color: var(--tertiary-neon);
+            color: black;
+        }
+
+        .teacher-edit-btn:hover {
+            box-shadow: 0 0 15px var(--tertiary-neon);
+        }
+    </style>
+</head>
+
+<body class="flex items-center justify-center min-h-screen">
+
+    <div id="canvas-container"></div>
+
+    <!-- Login Page -->
+    <div id="login-page" class="absolute inset-0 flex items-center justify-center p-4">
+        <!-- Login Panel (Existing Code... assumes no changes needed here) -->
+        <div class="glass-element login-panel w-full max-w-[460px] p-12 relative opacity-0 scale-90">
+            <!-- ... (Login Content) ... -->
+            <h2 class="text-6xl font-black text-white tracking-tighter mb-4">LOG<span class="text-cyan-400">IN</span>
+            </h2>
+            <p class="text-white/30 mb-10 font-light uppercase tracking-widest text-[10px]">Orion Command Portal</p>
+            <div class="space-y-4">
+                <input type="text" id="usernameInput" placeholder="Access ID"
+                    class="cyber-input w-full p-5 rounded-3xl">
+                <input type="password" id="passwordInput" placeholder="Key Code"
+                    class="cyber-input w-full p-5 rounded-3xl">
+
+                <button id="loginBtn" class="btn-action w-full py-5 rounded-3xl mt-6 uppercase text-xs">Execute
+                    Entry</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Page -->
+    <div id="dashboard-page" class="absolute inset-0 hidden">
+        <!-- Sidebar -->
+        <div id="sidebar" class="sidebar-container pt-24">
+            <div class="px-6 mb-8">
+                <h1 class="text-xl font-extrabold text-white tracking-wider font-mono">ORION_SYSTEM</h1>
+                <p class="text-white/30 text-[10px] uppercase mt-1">v.2.0.4 [STABLE]</p>
+            </div>
+            <nav class="space-y-1">
+                <div class="nav-item active" onclick="switchView('overview')">⚡ TERMINAL</div>
+                <div class="nav-item" onclick="switchView('students')">🎓 STUDENTS</div>
+                <div class="nav-item" onclick="switchView('teachers')">👨‍🏫 TEACHERS</div>
+                <div class="nav-item" onclick="switchView('courses')">📚 COURSES</div>
+                <div class="nav-item" onclick="switchView('attendance')">🕒 ATTENDANCE</div>
+            </nav>
+        </div>
+
+        <!-- Top Navbar -->
+        <nav class="navbar w-full flex justify-between items-center p-4 px-8 fixed top-0 left-0 z-50 pl-[280px]">
+            <!-- Toggle Button -->
+            <button onclick="toggleSidebar()" class="text-white mr-4">☰</button>
+            <div class="flex items-center space-x-4">
+                <span class="text-white/50 text-sm font-mono">User: <span id="userRoleDisplay">Guest</span></span>
+                <span class="status-dot w-3 h-3 rounded-full bg-green-500"></span>
+                <button id="logoutBtn"
+                    class="action-btn-base bg-red-500 text-white font-mono hover:bg-red-600">LOGOUT</button>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <div class="main-content pl-[260px] pt-24 p-8 min-h-screen relative z-10 transition-all duration-300">
+
+            <!-- View: Overview (Stats) -->
+            <div id="view-overview" class="view-section">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                    <div class="bento-card col-span-1 transform transition-transform hover:scale-[1.02] cursor-pointer">
+                        <p class="text-white/50 text-xs uppercase font-mono mb-2">Total Students</p>
+                        <h2 id="stats-students" class="text-5xl font-extrabold text-cyan-400">0</h2>
+                    </div>
+                    <div class="bento-card col-span-1 transform transition-transform hover:scale-[1.02] cursor-pointer">
+                        <p class="text-white/50 text-xs uppercase font-mono mb-2">Academic Staff</p>
+                        <h2 id="stats-teachers" class="text-5xl font-extrabold text-tertiary-neon">0</h2>
+                    </div>
+                    <div class="bento-card col-span-1 transform transition-transform hover:scale-[1.02] cursor-pointer">
+                        <p class="text-white/50 text-xs uppercase font-mono mb-2">Active Courses</p>
+                        <h2 id="stats-courses" class="text-5xl font-extrabold text-fuchsia-400">0</h2>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Students -->
+            <div id="view-students" class="view-section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-white">Student Database</h2>
+                    <button id="addStudentBtn" onclick="openModal('student')"
+                        class="bg-cyan-400 text-black font-bold px-6 py-3 rounded-full hover:scale-105 transition shadow-[0_0_15px_rgba(0,242,255,0.4)] text-xs">+
+                        REGISTER NODE</button>
+                </div>
+                <input type="text" id="searchBar" placeholder="Search Node ID / Name..."
+                    class="cyber-input w-full p-4 rounded-xl text-white placeholder-white/40 mb-8"
+                    oninput="renderStudentCards(config.currentRole, this.value)">
+                <div id="studentCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <!-- View: Teachers -->
+            <div id="view-teachers" class="view-section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-white">Faculty Network</h2>
+                    <button id="addTeacherBtn" onclick="openModal('teacher')"
+                        class="bg-tertiary-neon text-black font-bold px-6 py-3 rounded-full hover:scale-105 transition shadow-[0_0_15px_rgba(255,235,0,0.4)] text-xs">+
+                        ADD FACULTY</button>
+                </div>
+                <div id="teacherCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <!-- View: Courses -->
+            <div id="view-courses" class="view-section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-white">Curriculum Grid</h2>
+                    <button id="addCourseBtn" onclick="openModal('course')"
+                        class="bg-fuchsia-400 text-white font-bold px-6 py-3 rounded-full hover:scale-105 transition shadow-[0_0_15px_rgba(255,0,255,0.4)] text-xs">+
+                        INIT COURSE</button>
+                </div>
+                <div id="courseCardsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+            </div>
+
+            <!-- View: Attendance -->
+            <div id="view-attendance" class="view-section hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-3xl font-bold text-white">Attendance Logs</h2>
+                    <button id="addAttendanceBtn" onclick="openModal('attendance')"
+                        class="bg-green-400 text-black font-bold px-6 py-3 rounded-full hover:scale-105 transition shadow-[0_0_15px_rgba(0,255,0,0.4)] text-xs hidden">+
+                        MARK ATTENDANCE</button>
+                </div>
+                <div id="attendanceCardsContainer" class="grid grid-cols-1 gap-4"></div>
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Generic Modal for Forms -->
+    <div id="genericModal"
+        class="fixed inset-0 z-50 flex items-center justify-center hidden bg-black/80 backdrop-blur-sm">
+        <div class="modal-content glass-element p-8 w-full max-w-md relative">
+            <h2 id="modalTitle" class="text-3xl font-bold text-white mb-6">Initialize</h2>
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay"
+        class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div class="flex flex-col items-center">
+            <div class="w-16 h-16 border-4 border-cyan-400 border-t-transparent rounded-full animate-spin mb-4"></div>
+            <p class="text-cyan-400 font-mono animate-pulse">PROCESSING DATA...</p>
+        </div>
+    </div>
+
+    <script>
+        // --- Configuration ---
+        const config = {
+            apiBase: 'http://localhost:5000/api',
+            currentRole: localStorage.getItem('userRole'),
+            token: localStorage.getItem('token'),
+            particles: null,
+            scene: null, camera: null, renderer: null
+        };
+
+        // --- UI Utilities: Toasts & Loaders ---
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+
+            // Colors
+            const colorClass = type === 'success' ? 'border-green-400 text-green-400' : 'border-red-400 text-red-400';
+            const bgClass = type === 'success' ? 'bg-green-400/10' : 'bg-red-400/10';
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-6 py-4 rounded-xl border ${colorClass} ${bgClass} backdrop-blur-md shadow-[0_0_20px_rgba(0,0,0,0.5)] transform translate-y-10 opacity-0 transition-all duration-300 min-w-[300px]`;
+            toast.innerHTML = `
+                <span class="text-xl">${type === 'success' ? '✔' : '⚠'}</span>
+                <div>
+                    <h4 class="font-bold text-sm uppercase tracking-wider">${type}</h4>
+                    <p class="text-xs text-white/80">${message}</p>
+                </div>
+            `;
+
+            container.appendChild(toast);
+
+            // Animate In
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            });
+
+            // Remove
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function toggleLoader(show) {
+            const loader = document.getElementById('loading-overlay');
+            if (show) loader.classList.remove('hidden');
+            else loader.classList.add('hidden');
+        }
+
+        // --- View Navigation & Animation ---
+        function switchView(viewName) {
+            // Hide all
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+            // Show & Animate
+            const currentView = document.getElementById(`view-${viewName}`);
+            currentView.classList.remove('hidden');
+
+            // GSAP Entrance
+            gsap.fromTo(currentView.children,
+                { y: 20, opacity: 0 },
+                { y: 0, opacity: 1, duration: 0.5, stagger: 0.1, ease: "power2.out" }
+            );
+
+            // Update Tab
+            const navMap = { 'overview': 0, 'students': 1, 'teachers': 2, 'courses': 3, 'attendance': 4 };
+            const navItems = document.querySelectorAll('.nav-item');
+            if (navItems[navMap[viewName]]) navItems[navMap[viewName]].classList.add('active');
+
+            // Refresh Data
+            if (viewName === 'students') fetchData('students');
+            if (viewName === 'teachers') fetchData('teachers');
+            if (viewName === 'courses') fetchData('courses');
+            if (viewName === 'attendance') fetchData('attendance');
+            if (viewName === 'overview') updateStats();
+        }
+
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // --- Data Fetching ---
+        async function fetchData(type) {
+            if (!config.token) return;
+            toggleLoader(true);
+            try {
+                const res = await fetch(`${config.apiBase}/${type}/all`, {
+                    headers: { 'Authorization': `Bearer ${config.token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (type === 'students') renderStudents(data);
+                    if (type === 'teachers') renderTeachers(data);
+                    if (type === 'courses') renderCourses(data);
+                    if (type === 'attendance') renderAttendance(data);
+                } else {
+                    showToast('Failed to fetch data', 'error');
+                }
+            } catch (e) {
+                console.error(e);
+                showToast('Network error', 'error');
+            } finally {
+                toggleLoader(false);
+            }
+        }
+
+        async function updateStats() {
+            const headers = { 'Authorization': `Bearer ${config.token}` };
+            try {
+                const [s, t, c] = await Promise.all([
+                    fetch(`${config.apiBase}/students/all`, { headers }).then(r => r.json()),
+                    fetch(`${config.apiBase}/teachers/all`, { headers }).then(r => r.json()),
+                    fetch(`${config.apiBase}/courses/all`, { headers }).then(r => r.json())
+                ]);
+                animateValue("stats-students", 0, s.length || 0, 1000);
+                animateValue("stats-teachers", 0, t.length || 0, 1000);
+                animateValue("stats-courses", 0, c.length || 0, 1000);
+            } catch (e) { console.log("Stats error", e); }
+        }
+
+        function animateValue(id, start, end, duration) {
+            const obj = document.getElementById(id);
+            if (!obj) return;
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                obj.innerHTML = Math.floor(progress * (end - start) + start);
+                if (progress < 1) window.requestAnimationFrame(step);
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // --- Rendering & 3D Tilt Effect ---
+        function applyTilt(element) {
+            element.addEventListener('mousemove', (e) => {
+                const rect = element.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                const rotateX = ((y - centerY) / centerY) * -5; // Max 5deg
+                const rotateY = ((x - centerX) / centerX) * 5;
+
+                gsap.to(element, { transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`, duration: 0.1 });
+            });
+            element.addEventListener('mouseleave', () => {
+                gsap.to(element, { transform: `perspective(1000px) rotateX(0deg) rotateY(0deg) scale(1)`, duration: 0.5, ease: "elastic.out(1, 0.5)" });
+            });
+        }
+
+        function renderStudents(data) {
+            const container = document.getElementById('studentCardsContainer');
+            container.innerHTML = data.map(s => `
+                <div class="bento-card p-6 flex flex-col justify-between group relative overflow-hidden">
+                    <div class="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                    <div>
+                        <p class="text-white/50 text-xs font-mono">ID: ${s.studentId}</p>
+                        <h3 class="text-xl font-bold text-white mb-2 group-hover:text-cyan-400 transition">${s.name}</h3>
+                        <p class="text-white/70 text-sm">${s.course || 'N/A'}</p>
+                        <span class="${s.status === 'Active' ? 'text-green-400' : 'text-red-400'} text-xs uppercase font-bold mt-2 inline-block">${s.status}</span>
+                    </div>
+                     ${config.currentRole === 'Admin' ? `<button onclick="deleteItem('students', '${s._id}')" class="text-red-500 text-xs font-bold mt-4 text-right hover:text-red-400 relative z-10">DELETE</button>` : ''}
+                </div>
+             `).join('');
+            document.querySelectorAll('#studentCardsContainer .bento-card').forEach(applyTilt);
+
+            // Inject Add Button Logic for UI update
+            updateUIForRole();
+        }
+
+        function renderTeachers(data) {
+            const container = document.getElementById('teacherCardsContainer');
+            container.innerHTML = data.map(t => `
+                <div class="bento-card p-6 border-l-4 border-l-yellow-400 group relative">
+                    <div class="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                    <p class="text-white/50 text-xs font-mono">EMP: ${t.employeeId}</p>
+                    <h3 class="text-xl font-bold text-white group-hover:text-yellow-400 transition">${t.name}</h3>
+                    <p class="text-tertiary-neon text-sm font-bold mt-1">${t.subject || 'General'}</p>
+                    <p class="text-white/50 text-xs mt-2">${t.email}</p>
+                </div>
+             `).join('');
+            document.querySelectorAll('#teacherCardsContainer .bento-card').forEach(applyTilt);
+            updateUIForRole();
+        }
+
+        function renderCourses(data) {
+            const container = document.getElementById('courseCardsContainer');
+            container.innerHTML = data.map(c => `
+                <div class="bento-card p-6 border-l-4 border-l-fuchsia-400 group relative">
+                    <div class="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                    <div class="flex justify-between">
+                        <h3 class="text-2xl font-bold text-white group-hover:text-fuchsia-400 transition">${c.name}</h3>
+                        <span class="text-fuchsia-400 font-mono">${c.code}</span>
+                    </div>
+                    <p class="text-white/50 text-sm mt-2">Credits: ${c.credits || 0}</p>
+                </div>
+             `).join('');
+            document.querySelectorAll('#courseCardsContainer .bento-card').forEach(applyTilt);
+            updateUIForRole();
+        }
+
+        function renderAttendance(data) {
+            const container = document.getElementById('attendanceCardsContainer');
+
+            // Professional Data Table Structure
+            if (data.length === 0) {
+                container.innerHTML = '<p class="text-white/50 italic">No attendance records found.</p>';
+                return;
+            }
+
+            let tableHTML = `
+                <div class="overflow-x-auto rounded-xl border border-white/10">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-white/5 text-xs uppercase tracking-wider text-white/60 font-mono border-b border-white/10">
+                                <th class="p-4">Date</th>
+                                <th class="p-4">Student ID</th>
+                                <th class="p-4">Subject</th>
+                                <th class="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5">
+            `;
+
+            data.forEach(a => {
+                const dateStr = new Date(a.date).toLocaleDateString();
+                const statusColor = a.status === 'Present' ? 'text-green-400 bg-green-400/10' : (a.status === 'Absent' ? 'text-red-400 bg-red-400/10' : 'text-yellow-400 bg-yellow-400/10');
+
+                tableHTML += `
+                    <tr class="hover:bg-white/5 transition duration-150">
+                        <td class="p-4 font-mono text-sm text-cyan-300">${dateStr}</td>
+                        <td class="p-4 font-bold text-white">${a.studentId}</td>
+                        <td class="p-4 text-sm text-white/70">${a.subject || '-'}</td>
+                        <td class="p-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${statusColor}">
+                                ${a.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHTML += `</tbody></table></div>`;
+            container.innerHTML = tableHTML;
+
+            updateUIForRole();
+        }
+
+        // --- Three.js Advanced Network Animation ---
+        function initThreeJS() {
+            const scene = new THREE.Scene();
+            // scene.fog = new THREE.FogExp2(0x000000, 0.035); // Cool fog
+
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 30;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Particles
+            const particleCount = 1500; // More particles
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(particleCount * 3);
+            const velocities = [];
+
+            for (let i = 0; i < particleCount; i++) {
+                positions[i * 3] = (Math.random() - 0.5) * 100;
+                positions[i * 3 + 1] = (Math.random() - 0.5) * 100;
+                positions[i * 3 + 2] = (Math.random() - 0.5) * 100;
+                velocities.push({
+                    x: (Math.random() - 0.5) * 0.05,
+                    y: (Math.random() - 0.5) * 0.05,
+                    z: (Math.random() - 0.5) * 0.05
+                });
+            }
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+            const material = new THREE.PointsMaterial({
+                color: 0x00f2ff,
+                size: 0.2,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+
+            // Animation Loop
+            function animate() {
+                requestAnimationFrame(animate);
+
+                const posAttribute = geometry.attributes.position;
+
+                for (let i = 0; i < particleCount; i++) {
+                    // Move particles
+                    posAttribute.array[i * 3] += velocities[i].x;
+                    posAttribute.array[i * 3 + 1] += velocities[i].y;
+                    posAttribute.array[i * 3 + 2] += velocities[i].z;
+
+                    // Boundary Check (Loop around)
+                    if (Math.abs(posAttribute.array[i * 3]) > 50) posAttribute.array[i * 3] *= -1;
+                    if (Math.abs(posAttribute.array[i * 3 + 1]) > 50) posAttribute.array[i * 3 + 1] *= -1;
+                    if (Math.abs(posAttribute.array[i * 3 + 2]) > 50) posAttribute.array[i * 3 + 2] *= -1;
+                }
+                posAttribute.needsUpdate = true;
+
+                particles.rotation.y += 0.001;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        // --- Logic: Forms & Auth (Preserved & Fixed) ---
+        function openModal(type) {
+            document.getElementById('genericModal').classList.remove('hidden');
+            gsap.from("#genericModal .modal-content", { scale: 0.8, opacity: 0, duration: 0.3, ease: "back.out" });
+
+            const body = document.getElementById('modalBody');
+            const title = document.getElementById('modalTitle');
+
+            // ... (HTML generation same as before, strict ID usage) ...
+            if (type === 'student') {
+                title.innerText = "Register Student Node";
+                body.innerHTML = `
+                    <form onsubmit="handleFormSubmit(event, 'students')" class="space-y-4">
+                        <input id="f-name" placeholder="Full Name" class="cyber-input w-full p-3 rounded-xl" required>
+                        <input id="f-id" placeholder="Student ID (S...)" class="cyber-input w-full p-3 rounded-xl" required>
+                        <input id="f-course" placeholder="Course" class="cyber-input w-full p-3 rounded-xl" required>
+                        <input id="f-grade" placeholder="Grade" class="cyber-input w-full p-3 rounded-xl">
+                        <input id="f-email" placeholder="Email" class="cyber-input w-full p-3 rounded-xl" required>
+                        <button type="submit" class="btn-action w-full py-4 rounded-xl mt-4">EXECUTE CREATION</button>
+                    </form>
+                `;
+            } else if (type === 'teacher') {
+                title.innerText = "Add Faculty Member";
+                body.innerHTML = `
+                     <form onsubmit="handleFormSubmit(event, 'teachers')" class="space-y-4">
+                        <input id="f-name" placeholder="Full Name" class="cyber-input w-full p-3 rounded-xl" required>
+                        <input id="f-id" placeholder="Employee ID (E...)" class="cyber-input w-full p-3 rounded-xl" required>
+                        <input id="f-subject" placeholder="Subject Specialization" class="cyber-input w-full p-3 rounded-xl" required>
+                         <input id="f-email" placeholder="Email" class="cyber-input w-full p-3 rounded-xl" required>
+                        <button type="submit" class="btn-action w-full py-4 rounded-xl mt-4 bg-tertiary-neon text-black">ONBOARD</button>
+                    </form>
+                `;
+            } else if (type === 'courses') {
+                title.innerText = "Initialize Course";
+                body.innerHTML = `
+                     <form onsubmit="handleFormSubmit(event, 'courses')" class="space-y-4">
+                        <input id="f-name" placeholder="Course Name" class="cyber-input w-full p-3 rounded-xl" required>
+                        <input id="f-code" placeholder="Course Code (CS101)" class="cyber-input w-full p-3 rounded-xl" required>
+                        <input id="f-credits" type="number" placeholder="Credits" class="cyber-input w-full p-3 rounded-xl" required>
+                        <button type="submit" class="btn-action w-full py-4 rounded-xl mt-4 bg-fuchsia-400 text-white">DEPLOY</button>
+                    </form>
+                `;
+            } else if (type === 'attendance') {
+                title.innerText = "Log Attendance";
+                body.innerHTML = `
+                     <form onsubmit="handleFormSubmit(event, 'attendance')" class="space-y-4">
+                        <input id="f-sid" placeholder="Student ID" class="cyber-input w-full p-3 rounded-xl" required>
+                        <input id="f-date" type="date" class="cyber-input w-full p-3 rounded-xl text-white" required>
+                        <select id="f-status" class="cyber-input w-full p-3 rounded-xl text-white">
+                            <option value="Present" class="text-black">Present</option>
+                            <option value="Absent" class="text-black">Absent</option>
+                            <option value="Late" class="text-black">Late</option>
+                        </select>
+                         <input id="f-subject" placeholder="Subject (Optional)" class="cyber-input w-full p-3 rounded-xl">
+                        <button type="submit" class="btn-action w-full py-4 rounded-xl mt-4 bg-green-400 text-black">LOG DATA</button>
+                    </form>
+                `;
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('genericModal').classList.add('hidden');
+        }
+
+        async function handleFormSubmit(e, type) {
+            e.preventDefault();
+            toggleLoader(true);
+            const payload = {};
+            if (type === 'students') {
+                payload.name = document.getElementById('f-name').value;
+                payload.studentId = document.getElementById('f-id').value;
+                payload.course = document.getElementById('f-course').value;
+                payload.grade = document.getElementById('f-grade').value;
+                payload.email = document.getElementById('f-email').value;
+            } else if (type === 'teachers') {
+                payload.name = document.getElementById('f-name').value;
+                payload.employeeId = document.getElementById('f-id').value;
+                payload.subject = document.getElementById('f-subject').value;
+                payload.email = document.getElementById('f-email').value;
+            } else if (type === 'courses') {
+                payload.name = document.getElementById('f-name').value;
+                payload.code = document.getElementById('f-code').value;
+                payload.credits = parseInt(document.getElementById('f-credits').value) || 0; // Fix: Ensure Integer
+            } else if (type === 'attendance') {
+                payload.studentId = document.getElementById('f-sid').value;
+                payload.date = document.getElementById('f-date').value;
+                payload.status = document.getElementById('f-status').value;
+                payload.subject = document.getElementById('f-subject').value;
+            }
+
+            try {
+                const res = await fetch(`${config.apiBase}/${type}/add`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${config.token}` },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showToast('Entry successfully created', 'success');
+                    closeModal();
+                    fetchData(type);
+                    if (type === 'students' || type === 'teachers' || type === 'courses') updateStats();
+                } else {
+                    showToast('Error: ' + (data.error || data.message), 'error');
+                }
+            } catch (err) {
+                showToast('Connection failed: ' + err.message, 'error');
+            } finally {
+                toggleLoader(false);
+            }
+        }
+
+        async function deleteItem(type, id) {
+            if (!confirm("Terminate Node?")) return;
+            toggleLoader(true);
+            try {
+                await fetch(`${config.apiBase}/${type}/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${config.token}` }
+                });
+                showToast('Node terminated successfully', 'success');
+                fetchData(type);
+                updateStats();
+            } catch (e) {
+                showToast('Termination failed', 'error');
+            } finally {
+                toggleLoader(false);
+            }
+        }
+
+        // --- Role Based UI ---
+        function updateUIForRole() {
+            const role = config.currentRole;
+
+            // Explicitly selecting by ID now
+            const addStudentBtn = document.getElementById('addStudentBtn');
+            const addTeacherBtn = document.getElementById('addTeacherBtn');
+            const addCourseBtn = document.getElementById('addCourseBtn');
+            const addAttendanceBtn = document.getElementById('addAttendanceBtn');
+
+            if (addStudentBtn) addStudentBtn.style.display = (role === 'Admin' || role === 'Teacher') ? 'block' : 'none';
+            if (addTeacherBtn) addTeacherBtn.style.display = (role === 'Admin') ? 'block' : 'none';
+            if (addCourseBtn) addCourseBtn.style.display = (role === 'Admin') ? 'block' : 'none';
+            if (addAttendanceBtn) addAttendanceBtn.style.display = (role === 'Admin' || role === 'Teacher') ? 'block' : 'none';
+
+            console.log(`UI Updated for Role: ${role}`); // Debugging
+        }
+
+        // --- Init & Auth ---
+        window.addEventListener('load', () => {
+            initThreeJS();
+            if (config.token) {
+                document.getElementById('userRoleDisplay').innerText = config.currentRole;
+                document.getElementById('dashboard-page').classList.remove('hidden');
+                updateStats();
+                updateUIForRole();
+            } else {
+                document.getElementById('login-page').classList.remove('hidden');
+                gsap.to('.login-panel', { opacity: 1, scale: 1 });
+            }
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', async () => {
+            const email = document.getElementById('usernameInput').value;
+            const password = document.getElementById('passwordInput').value;
+            toggleLoader(true);
+            try {
+                const res = await fetch(`${config.apiBase}/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userRole', data.role);
+                    showToast('Login Successful', 'success');
+                    setTimeout(() => location.reload(), 1000); // Delay for toast
+                } else {
+                    showToast(data.message, 'error');
+                }
+            } catch (e) { showToast("Login Error", 'error'); }
+            finally { toggleLoader(false); }
+        });
+
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            localStorage.clear();
+            location.reload();
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orion Command Center</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root { 
+            --primary-neon: #00f2ff; /* Default for Admin/Login */
+            --secondary-neon: #ff00ff; /* For Student/Signup */
+            --tertiary-neon: #ffeb00; /* For Teacher */
+            --red-neon: #ff3366;
+            --green-neon: #00ff99;
+        }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Outfit', sans-serif; color: white; }
+        
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        
+        /* Base Glassmorphism Style */
+        .glass-element {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            border-radius: 20px;
+        }
+
+        /* Login Page Specific */
+        .login-panel { border-radius: 50px; } /* More rounded than dashboard */
+        .cyber-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            color: white;
+            font-family: 'Space Mono', monospace;
+        }
+        .cyber-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: var(--primary-neon); /* Dynamically set by JS */
+            transform: scale(1.02);
+            outline: none;
+        }
+        .btn-action {
+            background: var(--primary-neon); /* Dynamically set by JS */
+            color: #000;
+            font-weight: 900;
+            transition: all 0.4s;
+            border-radius: 30px;
+        }
+        .btn-action:hover { letter-spacing: 2px; box-shadow: 0 0 20px var(--primary-neon); }
+
+        /* Dashboard Specific */
+        .navbar {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(25px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .bento-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+        .student-card {
+            background: linear-gradient(145deg, rgba(0,242,255,0.05), rgba(255,0,255,0.05));
+            border: 1px solid rgba(0,242,255,0.2);
+            box-shadow: 0 0 20px rgba(0,242,255,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+        .student-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 0 30px rgba(0,242,255,0.3);
+        }
+        .status-dot { animation: pulse-green 2s infinite; }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 var(--green-neon); }
+            70% { box-shadow: 0 0 0 6px rgba(0,255,153,0); }
+        }
+
+        .action-btn-base {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 700;
+            transition: all 0.2s;
+            font-size: 0.75rem;
+            font-family: 'Space Mono', monospace;
+        }
+        .admin-edit-btn { background-color: var(--green-neon); color: black; }
+        .admin-edit-btn:hover { box-shadow: 0 0 15px var(--green-neon); }
+        .admin-delete-btn { background-color: var(--red-neon); color: white; }
+        .admin-delete-btn:hover { box-shadow: 0 0 15px var(--red-neon); }
+        .teacher-edit-btn { background-color: var(--tertiary-neon); color: black; }
+        .teacher-edit-btn:hover { box-shadow: 0 0 15px var(--tertiary-neon); }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+
+    <div id="canvas-container"></div>
+
+    <div id="login-page" class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="glass-element login-panel w-full max-w-[460px] p-12 relative opacity-0 scale-90">
+            <h2 class="text-6xl font-black text-white tracking-tighter mb-4">LOG<span class="text-cyan-400">IN</span></h2>
+            <p class="text-white/30 mb-10 font-light uppercase tracking-widest text-[10px]">Orion Command Portal</p>
+
+            <div class="space-y-4">
+                <input type="text" id="usernameInput" placeholder="Access ID" class="cyber-input w-full p-5 rounded-3xl">
+                <input type="password" id="passwordInput" placeholder="Key Code" class="cyber-input w-full p-5 rounded-3xl">
+                
+                <label for="roleSelect" class="text-white/50 text-[10px] uppercase tracking-widest block mt-4">Select Role:</label>
+                <select id="roleSelect" class="cyber-input w-full p-4 rounded-3xl text-white">
+                    <option value="Admin">Admin</option>
+                    <option value="Teacher">Teacher</option>
+                    <option value="Student">Student</option>
+                </select>
+
+                <button id="loginBtn" class="btn-action w-full py-5 rounded-3xl mt-6 uppercase text-xs">Execute Entry</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard-page" class="absolute inset-0 hidden">
+        <nav class="navbar w-full flex justify-between items-center p-4 px-8 fixed top-0 left-0 z-20">
+            <h1 class="text-2xl font-extrabold text-white tracking-wider font-mono">ORION_CMD</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-white/50 text-sm font-mono">Status: Active</span>
+                <span class="status-dot w-3 h-3 rounded-full bg-green-500"></span>
+                <button id="logoutBtn" class="action-btn-base bg-red-500 text-white font-mono hover:bg-red-600">LOGOUT</button>
+            </div>
+        </nav>
+
+        <div class="container mx-auto p-8 pt-24 min-h-screen z-10 relative">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                <div class="bento-card col-span-1 transform transition-transform hover:scale-[1.02] cursor-pointer">
+                    <p class="text-white/50 text-xs uppercase font-mono mb-2">Total Nodes</p>
+                    <h2 class="text-5xl font-extrabold text-cyan-400">128</h2>
+                    <p class="text-white/30 text-xs mt-2">Active Students & Staff</p>
+                </div>
+                <div class="bento-card col-span-1 transform transition-transform hover:scale-[1.02] cursor-pointer">
+                    <p class="text-white/50 text-xs uppercase font-mono mb-2">Data Streams</p>
+                    <h2 class="text-5xl font-extrabold text-fuchsia-400">64</h2>
+                    <p class="text-white/30 text-xs mt-2">Courses Engaged</p>
+                </div>
+                <div class="bento-card col-span-1 transform transition-transform hover:scale-[1.02] cursor-pointer">
+                    <p class="text-white/50 text-xs uppercase font-mono mb-2">System Health</p>
+                    <h2 class="text-5xl font-extrabold text-green-400">99%</h2>
+                    <p class="text-white/30 text-xs mt-2">Optimal Performance</p>
+                </div>
+            </div>
+
+            <div class="mb-8">
+                <input type="text" id="searchBar" placeholder="Search Node ID / Name..." class="cyber-input w-full p-4 rounded-xl text-white placeholder-white/40">
+            </div>
+
+            <div id="studentCardsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Global State & Config ---
+        const config = {
+            loginPage: document.getElementById('login-page'),
+            dashboardPage: document.getElementById('dashboard-page'),
+            usernameInput: document.getElementById('usernameInput'),
+            passwordInput: document.getElementById('passwordInput'),
+            roleSelect: document.getElementById('roleSelect'),
+            loginBtn: document.getElementById('loginBtn'),
+            logoutBtn: document.getElementById('logoutBtn'),
+            searchBar: document.getElementById('searchBar'),
+            studentCardsContainer: document.getElementById('studentCardsContainer'),
+            particles: null, // Three.js particles
+            particleMaterial: null, // Three.js material
+            currentRole: localStorage.getItem('userRole') || null,
+            studentsData: [
+                { id: 'S001', name: 'Anya Sharma', course: 'Quantum Physics', grade: 'A', status: 'Active' },
+                { id: 'S002', name: 'Kian Patel', course: 'Cyber Security', grade: 'B+', status: 'Active' },
+                { id: 'S003', name: 'Lena Singh', course: 'AI & Robotics', grade: 'A-', status: 'Inactive' },
+                { id: 'S004', name: 'Rohan Gupta', course: 'Neural Networks', grade: 'B', status: 'Active' },
+                { id: 'S005', name: 'Zara Khan', course: 'Data Science', grade: 'A', status: 'Active' },
+                { id: 'S006', name: 'Amit Verma', course: 'Blockchain Dev', grade: 'C+', status: 'Inactive' }
+            ]
+        };
+
+        // --- Three.js Background Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const particleCount = 6000;
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            pos[i * 3] = (Math.random() - 0.5) * 60;
+            pos[i * 3 + 1] = (Math.random() - 0.5) * 60;
+            pos[i * 3 + 2] = (Math.random() - 0.5) * 40;
+        }
+
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        config.particleMaterial = new THREE.PointsMaterial({ color: 0x00f2ff, size: 0.08, transparent: true, opacity: 0.4 });
+        config.particles = new THREE.Points(geo, config.particleMaterial);
+        scene.add(config.particles);
+        camera.position.z = 25;
+
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth / 2) * 0.05;
+            mouseY = (e.clientY - window.innerHeight / 2) * 0.05;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            config.particles.rotation.y += 0.002;
+            config.particles.rotation.x += 0.001;
+
+            camera.position.x += (mouseX - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY - camera.position.y) * 0.05;
+            camera.lookAt(0, 0, 0);
+
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- GSAP Animations & UI Logic ---
+        const uiTl = gsap.timeline();
+
+        function showLoginPage() {
+            config.dashboardPage.classList.add('hidden');
+            config.loginPage.classList.remove('hidden');
+            gsap.set(config.loginPage, { opacity: 0, scale: 0.9 });
+            gsap.to(config.loginPage, { opacity: 1, scale: 1, duration: 1.2, ease: "expo.out" });
+            
+            // Set default login page styles
+            document.documentElement.style.setProperty('--primary-neon', '#00f2ff');
+            config.particleMaterial.color.setHex(0x00f2ff);
+            gsap.to(config.particleMaterial, { opacity: 0.4, duration: 0.5 });
+        }
+
+        function showDashboardPage() {
+            config.loginPage.classList.add('hidden');
+            config.dashboardPage.classList.remove('hidden');
+            gsap.set(config.dashboardPage, { opacity: 0, y: 20 });
+            
+            // Dashboard load stagger
+            uiTl.clear(); // Clear previous animations if any
+            uiTl.to(config.dashboardPage, { opacity: 1, y: 0, duration: 1, ease: "power2.out" })
+                .from(".bento-card", { opacity: 0, y: 50, stagger: 0.2, duration: 0.8, ease: "back.out(1.2)" }, "-=0.5")
+                .from("#searchBar", { opacity: 0, y: 20, duration: 0.6 }, "-=0.3")
+                .from(".student-card", { opacity: 0, y: 30, stagger: 0.1, duration: 0.7, ease: "power2.out" }, "-=0.3");
+        }
+
+        function renderStudentCards(role, searchTerm = '') {
+            config.studentCardsContainer.innerHTML = ''; // Clear existing cards
+            const filteredStudents = config.studentsData.filter(student => 
+                student.id.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                student.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            filteredStudents.forEach(student => {
+                let actionButtons = '';
+                if (role === 'Admin') {
+                    actionButtons = `
+                        <button class="action-btn-base admin-edit-btn">EDIT</button>
+                        <button class="action-btn-base admin-delete-btn ml-2">DELETE</button>
+                    `;
+                } else if (role === 'Teacher') {
+                    actionButtons = `
+                        <button class="action-btn-base teacher-edit-btn">EDIT</button>
+                    `;
+                }
+                
+                const card = document.createElement('div');
+                card.className = `student-card bento-card flex flex-col justify-between p-6 opacity-0 translate-y-8`; // Initial state for stagger
+                card.innerHTML = `
+                    <div>
+                        <p class="text-white/50 text-xs uppercase font-mono mb-1">NODE_ID: ${student.id}</p>
+                        <h3 class="text-xl font-bold text-white mb-2">${student.name}</h3>
+                        <p class="text-white/70 text-sm font-mono">${student.course}</p>
+                        <p class="text-white/50 text-xs mt-1">Grade: ${student.grade}</p>
+                        <p class="text-white/50 text-xs mt-1">Status: <span class="${student.status === 'Active' ? 'text-green-400' : 'text-red-400'}">${student.status}</span></p>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        ${actionButtons}
+                    </div>
+                `;
+                config.studentCardsContainer.appendChild(card);
+            });
+            // Re-run stagger for new cards after search, if needed
+            if (searchTerm) {
+                gsap.from(".student-card", { opacity: 0, y: 30, stagger: 0.1, duration: 0.7, ease: "power2.out" });
+            }
+        }
+
+        // --- Event Listeners ---
+        config.loginBtn.addEventListener('click', () => {
+            const username = config.usernameInput.value;
+            const password = config.passwordInput.value;
+            const role = config.roleSelect.value;
+
+            // Simple mock authentication
+            if (username && password) {
+                localStorage.setItem('userRole', role);
+                config.currentRole = role;
+                gsap.to(config.loginPage, { 
+                    opacity: 0, y: -50, scale: 0.9, duration: 0.8, ease: "power2.in",
+                    onComplete: () => {
+                        handleAuthRedirect();
+                    }
+                });
+                // Particle warp effect
+                gsap.to(config.particleMaterial, { opacity: 0.8, size: 0.2, duration: 0.3, yoyo: true, repeat: 1 });
+            } else {
+                alert('Please enter username and password.');
+            }
+        });
+
+        config.logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('userRole');
+            config.currentRole = null;
+            showLoginPage();
+        });
+
+        config.roleSelect.addEventListener('change', (e) => {
+            const selectedRole = e.target.value;
+            let primaryColor = '';
+            let searchBarBorderColor = '';
+            if (selectedRole === 'Admin') {
+                primaryColor = '#00f2ff'; // Cyan
+                searchBarBorderColor = '#00f2ff';
+            } else if (selectedRole === 'Teacher') {
+                primaryColor = '#ffeb00'; // Yellow
+                searchBarBorderColor = '#ffeb00';
+            } else { // Student
+                primaryColor = '#ff00ff'; // Fuchsia
+                searchBarBorderColor = '#ff00ff';
+            }
+            document.documentElement.style.setProperty('--primary-neon', primaryColor);
+            gsap.to(config.particleMaterial.color, { r: new THREE.Color(primaryColor).r, g: new THREE.Color(primaryColor).g, b: new THREE.Color(primaryColor).b, duration: 0.5 });
+            document.documentElement.style.setProperty('--search-bar-border-color', searchBarBorderColor);
+        });
+
+        config.searchBar.addEventListener('input', (e) => {
+            renderStudentCards(config.currentRole, e.target.value);
+        });
+        
+        // --- Initial Load & Auth Check ---
+        function handleAuthRedirect() {
+            if (config.currentRole) {
+                showDashboardPage();
+                renderStudentCards(config.currentRole);
+                // Dynamically set search bar glow color based on role
+                let searchColor = '';
+                if (config.currentRole === 'Admin') searchColor = '#00f2ff';
+                else if (config.currentRole === 'Teacher') searchColor = '#ffeb00';
+                else searchColor = '#ff00ff';
+                document.documentElement.style.setProperty('--primary-neon', searchColor); // Re-use for input focus
+                document.getElementById('searchBar').style.setProperty('--tw-ring-color', searchColor); // Tailwind ring color
+            } else {
+                showLoginPage();
+            }
+        }
+
+        window.addEventListener('load', handleAuthRedirect);
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>

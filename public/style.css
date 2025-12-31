@@ -1,0 +1,66 @@
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.auth-container {
+    background: rgba(255, 255, 255, 0.9);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    width: 400px;
+    text-align: center;
+}
+h2 { margin-bottom: 1.5rem; color: #333; }
+.input-group { text-align: left; margin-bottom: 1rem; }
+.input-group label { display: block; margin-bottom: 5px; font-weight: bold; }
+.input-group input, select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    outline: none;
+}
+button {
+    width: 100%;
+    padding: 12px;
+    background: #764ba2;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.3s;
+}
+button:hover { background: #667eea; }
+#toggle-text { margin-top: 1rem; font-size: 0.9rem; }
+#toggle-text span { color: #764ba2; cursor: pointer; font-weight: bold; }
+
+/* Desktop-first Responsive */
+@media (max-width: 480px) {
+    .auth-container { width: 90%; }
+}
+.navbar {
+    background: #333; color: white; padding: 1rem 5%;
+    display: flex; justify-content: space-between; align-items: center;
+}
+.dashboard-container { padding: 2rem 5%; }
+.header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
+#add-std-btn { width: auto; background: #28a745; padding: 10px 20px; }
+
+.student-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+.student-card {
+    background: white; padding: 1.5rem; border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+.card-actions { margin-top: 1rem; display: flex; gap: 10px; }
+.edit-btn { background: #ffc107; color: black; }
+.delete-btn { background: #dc3545; }
+.view-only { font-style: italic; color: #777; }

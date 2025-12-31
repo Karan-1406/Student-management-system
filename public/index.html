@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum SMS - Auth</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;400;900&display=swap" rel="stylesheet">
+
+    <style>
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Outfit', sans-serif; cursor: crosshair; }
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.02);
+            backdrop-filter: blur(40px) saturate(200%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 50px 100px rgba(0,0,0,0.8);
+            z-index: 10;
+            transform-style: preserve-3d;
+            border-radius: 50px;
+        }
+
+        .cyber-input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
+            color: white;
+        }
+
+        .cyber-input:focus {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #00f2ff;
+            transform: scale(1.02);
+            outline: none;
+        }
+
+        .btn-action {
+            background: #fff;
+            color: #000;
+            font-weight: 900;
+            transition: all 0.4s;
+            position: relative;
+        }
+
+        .btn-action:hover {
+            letter-spacing: 4px;
+            box-shadow: 0 0 40px #fff;
+        }
+
+        select.cyber-input option {
+            background: #111;
+            color: white;
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center h-screen">
+
+    <div id="canvas-container"></div>
+
+    <div id="wrapper" class="w-full max-w-[460px] px-8">
+        <div class="glass-panel p-12 relative overflow-hidden">
+            
+            <div id="login-view">
+                <h2 class="text-6xl font-black text-white tracking-tighter mb-4">LOG<span class="text-cyan-400">IN</span></h2>
+                <p class="text-white/30 mb-10 font-light uppercase tracking-widest text-[10px]">Portal Initialization Sequence</p>
+
+                <form id="login-form" class="space-y-4">
+                    <input type="email" id="login-email" placeholder="Mail Path" class="cyber-input w-full p-5 rounded-3xl" required>
+                    <input type="password" id="login-pass" placeholder="Key Code" class="cyber-input w-full p-5 rounded-3xl" required>
+                    <button type="submit" class="btn-action w-full py-5 rounded-3xl mt-6 uppercase text-xs">Execute Entry</button>
+                </form>
+
+                <button onclick="warp('signup')" class="w-full mt-10 text-[10px] font-bold text-white/20 hover:text-white transition uppercase tracking-[0.4em]">
+                    New Identity [+]
+                </button>
+            </div>
+
+            <div id="signup-view" class="hidden opacity-0">
+                <h2 class="text-6xl font-black text-white tracking-tighter mb-4">REG<span class="text-fuchsia-400">ISTER</span></h2>
+                <p class="text-white/30 mb-10 font-light uppercase tracking-widest text-[10px]">Create Digital Signature</p>
+
+                <form id="signup-form" class="space-y-4">
+                    <input type="text" id="reg-name" placeholder="Alias (Name)" class="cyber-input w-full p-5 rounded-3xl border-fuchsia-500/20" required>
+                    <input type="email" id="reg-email" placeholder="Mail Path" class="cyber-input w-full p-5 rounded-3xl border-fuchsia-500/20" required>
+                    <input type="password" id="reg-pass" placeholder="Vault Key" class="cyber-input w-full p-5 rounded-3xl border-fuchsia-500/20" required>
+                    
+                    <select id="reg-role" class="cyber-input w-full p-5 rounded-3xl border-fuchsia-500/20 appearance-none cursor-pointer">
+                        <option value="Student">Role: Student</option>
+                        <option value="Teacher">Role: Teacher</option>
+                        <option value="Admin">Role: Admin</option>
+                    </select>
+
+                    <button type="submit" class="btn-action w-full py-5 rounded-3xl mt-6 uppercase text-xs !bg-fuchsia-500 !text-white">Forge Account</button>
+                </form>
+
+                <button onclick="warp('login')" class="w-full mt-10 text-[10px] font-bold text-white/20 hover:text-white transition uppercase tracking-[0.4em]">
+                    Return Core [-]
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. THREE.JS NEBULA (No Changes as requested) ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const particleCount = 6000;
+        const geo = new THREE.BufferGeometry();
+        const pos = new Float32Array(particleCount * 3);
+        for(let i=0; i<particleCount; i++) {
+            pos[i*3] = (Math.random() - 0.5) * 60;
+            pos[i*3+1] = (Math.random() - 0.5) * 60;
+            pos[i*3+2] = (Math.random() - 0.5) * 40;
+        }
+        geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+        const mat = new THREE.PointsMaterial({ color: 0x00f2ff, size: 0.08, transparent: true, opacity: 0.4 });
+        const cloud = new THREE.Points(geo, mat);
+        scene.add(cloud);
+        camera.position.z = 25;
+
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX - window.innerWidth/2) * 0.05;
+            mouseY = (e.clientY - window.innerHeight/2) * 0.05;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            cloud.rotation.y += 0.002;
+            camera.position.x += (mouseX - camera.position.x) * 0.05;
+            camera.position.y += (-mouseY - camera.position.y) * 0.05;
+            camera.lookAt(0,0,0);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- 2. THE WARP TRANSITION ---
+        function warp(view) {
+            const login = document.getElementById('login-view');
+            const signup = document.getElementById('signup-view');
+            const panel = document.querySelector('.glass-panel');
+            const tl = gsap.timeline();
+            
+            tl.to(panel, { rotateY: 180, scale: 0.8, duration: 0.6, ease: "power2.inOut" });
+            tl.add(() => {
+                if(view === 'signup') {
+                    login.classList.add('hidden');
+                    signup.classList.remove('hidden');
+                    gsap.set(signup, { rotateY: 180 });
+                    mat.color.setHex(0xff00ff); 
+                } else {
+                    signup.classList.add('hidden');
+                    login.classList.remove('hidden');
+                    gsap.set(login, { rotateY: 180 });
+                    mat.color.setHex(0x00f2ff);
+                }
+            }, "-=0.3");
+            tl.to(panel, { rotateY: 360, scale: 1, duration: 0.6, ease: "back.out(1.2)" });
+            tl.to(view === 'signup' ? signup : login, { opacity: 1, duration: 0.2 });
+            tl.set(panel, { rotateY: 0 });
+            tl.set(view === 'signup' ? signup : login, { rotateY: 0 });
+        }
+
+        // --- 3. STUDENT MANAGEMENT SYSTEM LOGIC ---
+        const apiBaseUrl = "http://localhost:5000/api/auth";
+
+        // Register Logic
+        document.getElementById('signup-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('reg-name').value,
+                email: document.getElementById('reg-email').value,
+                password: document.getElementById('reg-pass').value,
+                role: document.getElementById('reg-role').value
+            };
+            
+            try {
+                const res = await fetch(`${apiBaseUrl}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    alert("Identity Forged Successfully! Returning to Core...");
+                    warp('login');
+                } else { alert(data.message); }
+            } catch (err) { alert("Connection Error"); }
+        });
+
+        // Login Logic
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                email: document.getElementById('login-email').value,
+                password: document.getElementById('login-pass').value
+            };
+
+            try {
+                const res = await fetch(`${apiBaseUrl}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if(res.ok) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('userRole', data.role);
+                    window.location.href = 'dashboard.html';
+                } else { alert(data.message); }
+            } catch (err) { alert("Connection Error"); }
+        });
+
+        // Magnetic Tilt Effect
+        document.addEventListener('mousemove', (e) => {
+            const x = (window.innerWidth / 2 - e.pageX) / 40;
+            const y = (window.innerHeight / 2 - e.pageY) / 40;
+            gsap.to('.glass-panel', { rotateX: y, rotateY: -x, duration: 1.2, ease: "power2.out" });
+        });
+    </script>
+</body>
+</html>
